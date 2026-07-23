@@ -1,42 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spain Income Tax Calculator 2025 — IRPF & Social Security | Tabutility</title>
+  <meta name="description" content="Calculate your Spanish take-home pay for 2025. Includes IRPF income tax with personal allowance and employee social security contributions." />
+  <meta name="keywords" content="spain income tax calculator, irpf calculator, spain salary calculator 2025, seguridad social, take home pay spain, declaracion renta" />
+  <link rel="canonical" href="https://spain-income-tax.tabutility.com/" />
+  <meta property="og:title" content="Spain Income Tax Calculator 2025 — IRPF & Social Security" />
+  <meta property="og:description" content="Calculate Spanish take-home pay including IRPF and social security contributions for 2025." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇪🇸</text></svg>" />
+  <meta name="robots" content="index, follow" />
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7039091592734005" crossorigin="anonymous"></script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-78VZWJ5B1W"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-78VZWJ5B1W');</script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body style="margin:0;background:#f8faff;font-family:'Segoe UI',Arial,sans-serif">
+<div id="root"></div>
+<script type="text/babel">
+//<![CDATA[
+const { useState } = React;
 
-    <!-- ✏️ UPDATE THESE FOR EVERY NEW TOOL -->
-    <title>TOOL NAME — TOOL TAGLINE | Tabutility</title>
-    <meta name="description" content="TOOL DESCRIPTION. No sign-up, runs in your browser." />
-    <meta name="keywords" content="KEYWORD 1, KEYWORD 2, KEYWORD 3, free TOOL NAME" />
-    <link rel="canonical" href="https://SUBDOMAIN.tabutility.com/" />
-    <meta property="og:url" content="https://SUBDOMAIN.tabutility.com/" />
-    <meta property="og:title" content="TOOL NAME — TOOL TAGLINE" />
-    <meta property="og:description" content="TOOL DESCRIPTION. Free, no sign-up." />
-    <meta name="twitter:title" content="TOOL NAME — TOOL TAGLINE" />
-    <meta name="twitter:description" content="TOOL DESCRIPTION. Free, no sign-up." />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>EMOJI</text></svg>" />
-    <!-- ✏️ END OF SECTION TO UPDATE -->
+function calcSpain(gross) {
+  // Personal allowance: €5,550 (under 65)
+  const personalAllowance = 5550;
+  // Work expense reduction (reducción por rendimientos del trabajo)
+  // Up to €5,565 for income <= €14,852, phasing out
+  let workReduction = 0;
+  if (gross <= 14852) workReduction = 5565;
+  else if (gross <= 17673) workReduction = Math.max(0, 5565 - 1.5 * (gross - 14852));
+  else workReduction = 0;
 
-    <!-- DO NOT CHANGE ANYTHING BELOW THIS LINE -->
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="Tabutility" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="robots" content="index, follow" />
+  const taxableBase = Math.max(0, gross - personalAllowance - workReduction);
 
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7039091592734005" crossorigin="anonymous"></script>
+  // IRPF combined state + average regional rate 2025
+  const bands = [
+    { limit: 12450,   rate: 0.19 },
+    { limit: 20200,   rate: 0.24 },
+    { limit: 35200,   rate: 0.30 },
+    { limit: 60000,   rate: 0.37 },
+    { limit: 300000,  rate: 0.45 },
+    { limit: Infinity,rate: 0.47 },
+  ];
 
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-78VZWJ5B1W"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-78VZWJ5B1W');
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+  let irpf = 0, prev = 0;
+  for (const b of bands) {
+    if (taxableBase <= prev) break;
+    const slice = Math.min(taxableBase - prev, b.limit - prev);
+    irpf += slice * b.rate;
+    prev = b.limit;
+  }
+
+  // Social security employee contributions 2025
+  // Contingencias comunes 4.7%, desempleo 1.55%, formación 0.1%
+  const ss = gross * (0.047 + 0.0155 + 0.001);
+
+  const total = irpf + ss;
+  const takeHome = gross - total;
+  return { irpf, ss, total, takeHome, taxableBase };
+}
+
+function fmt(n) { return '€' + Math.round(n).toLocaleString('es-ES'); }
+function pct(n, gross) { return gross > 0 ? (n / gross * 100).toFixed(1) + '%' : '0%'; }
+
+function Row({ label, value, gross, highlight, sub }) {
+  return (
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid #f0f0f0',paddingLeft:sub?12:0}}>
+      <span style={{fontSize:sub?13:14,color:highlight?'#1a1a2e':sub?'#9ca3af':'#6b7280',fontWeight:highlight?700:400}}>{label}</span>
+      <div style={{textAlign:'right'}}>
+        <span style={{fontSize:15,fontWeight:700,color:highlight?'#c2410c':'#1a1a2e'}}>{fmt(value)}</span>
+        <span style={{fontSize:12,color:'#9ca3af',marginLeft:8}}>{pct(value,gross)}</span>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [gross, setGross] = useState(45000);
+  const r = calcSpain(Number(gross) || 0);
+  const g = Number(gross) || 0;
+
+  return (
+    <div style={{maxWidth:520,margin:'0 auto',padding:'0 0 40px'}}>
+      <div style={{background:'#1a1a2e',padding:'12px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <a href="https://tabutility.com" style={{color:'#a5b4fc',textDecoration:'none',fontSize:14}}>← All Tools</a>
+        <span style={{color:'#fff',fontWeight:700,fontSize:15}}>⚡ Tabutility</span>
+      </div>
+
+      <div style={{background:'linear-gradient(135deg,#c2410c,#9a3412)',padding:'28px 20px',textAlign:'center',color:'#fff'}}>
+        <div style={{fontSize:36,marginBottom:8}}>🇪🇸</div>
+        <h1 style={{margin:'0 0 6px',fontSize:22,fontWeight:900}}>Spain Income Tax Calculator</h1>
+        <p style={{margin:0,fontSize:13,opacity:0.85}}>IRPF · Social Security — 2025</p>
+      </div>
+
+      <div style={{padding:'20px'}}>
+        <div style={{background:'#fff',borderRadius:14,padding:'20px',boxShadow:'0 2px 12px rgba(0,0,0,0.06)',marginBottom:16}}>
+          <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:6}}>Annual Gross Salary (Salario Bruto)</label>
+          <div style={{position:'relative'}}>
+            <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'#6b7280',fontWeight:700}}>€</span>
+            <input type="number" value={gross} onChange={e=>setGross(e.target.value)}
+              style={{width:'100%',padding:'11px 12px 11px 28px',borderRadius:10,border:'2px solid #e5e7eb',fontSize:16,boxSizing:'border-box',outline:'none'}} />
+          </div>
+        </div>
+
+        <div style={{background:'#fff',borderRadius:14,padding:'20px',boxShadow:'0 2px 12px rgba(0,0,0,0.06)',marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#6b7280',marginBottom:4,textTransform:'uppercase',letterSpacing:0.5}}>Take-Home Pay (Salario Neto)</div>
+          <div style={{fontSize:36,fontWeight:900,color:'#c2410c',marginBottom:4}}>{fmt(r.takeHome)}</div>
+          <div style={{fontSize:13,color:'#9ca3af'}}>per year &nbsp;·&nbsp; {fmt(r.takeHome/12)} / month &nbsp;·&nbsp; {fmt(r.takeHome/14)} / 14 pays</div>
+        </div>
+
+        <div style={{background:'#fff',borderRadius:14,padding:'20px',boxShadow:'0 2px 12px rgba(0,0,0,0.06)'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#374151',marginBottom:8}}>Breakdown</div>
+          <Row label="Gross Salary" value={g} gross={g} />
+          <Row label="Taxable Base" value={r.taxableBase} gross={g} />
+          <Row label="IRPF Income Tax" value={r.irpf} gross={g} />
+          <Row label="Social Security (6.35%)" value={r.ss} gross={g} />
+          <Row label="Total Deductions" value={r.total} gross={g} />
+          <Row label="Net Take-Home" value={r.takeHome} gross={g} highlight />
+        </div>
+
+        <div style={{background:'#fff7ed',borderRadius:12,padding:'16px',marginTop:16,fontSize:13,color:'#9a3412',lineHeight:1.6}}>
+          <strong>2025 IRPF rates (combined state + regional avg):</strong> 19% to €12,450 · 24% to €20,200 · 30% to €35,200 · 37% to €60,000 · 45% to €300,000 · 47% above. Personal allowance €5,550. Social security: 6.35% employee (4.7% CC + 1.55% unemployment + 0.1% training). Spain has 14 pays — the monthly figure above is per pay.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+//]]>
+</script>
+</body>
 </html>
