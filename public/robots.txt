@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://spain-income-tax.tabutility.com/sitemap.xml
